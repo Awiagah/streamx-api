@@ -1,3 +1,4 @@
+<script typ="module">
 const { RtcTokenBuilder, RtcRole } = require("agora-token");
 const axios = require("axios");
 
@@ -97,3 +98,4 @@ module.exports = async (req, res) => {
 
   return res.status(404).json({ error: "Endpoint not found" });
 };
+</script>
