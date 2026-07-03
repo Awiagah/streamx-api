@@ -1,57 +1,99 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kungfu</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  
-    
-   <div class="background">
-    <div>
-    <nav class="nav">
-      <ul>
-      <li><a href="#"><img src="images/LOGO.jpg" class="logo"></a></li>
-      <li><a href="#"><h1>Welcome To The Kungfu Vibes</h1></a></li>
-      <li><a href="#">Home</a></li>
-      <li><a href="#"><button>Login</button></a></li>
-    </ul>
-    </nav>  
-  </div>
-  <div>
-    
-        <p  class="writen">
-  <span>
-Kungfu,<br>
-  also known as Gongfu or Wushu,<br> 
-  </span>
-  is a traditional Chinese martial art<br>
-  that encompasses a wide range of fighting styles<br>
-  and techniques. It is characterized by its emphasis on fluid movements,<br>
-  agility, and the integration of physical and mental discipline.<br>
-  Kungfu has a rich history dating back thousands of years<br>
-  and has been influenced by various cultural, philosophical,<br>
-  and religious traditions in China.<br>
-  It is not only a form of self-defense<br>
-   but also a way to cultivate inner strength, balance, and harmony.<br>
-  Kungfu has gained worldwide popularity through movies, television shows<br>,
-   and competitions, showcasing its dynamic techniques and<br>
-  impressive displays of skill.
-</p>
-<p class="img">
-  <img src="images/boy.jpg" class="boy">
-</p>
-    
-       
-  
-    
-   
+const { RtcTokenBuilder, RtcRole } = require("agora-token");
+const axios = require("axios");
 
-   
+module.exports = async (req, res) => {
+  // Clear CORS Setup
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
-   </div>
-   </div>
-</html>
+  const { endpoint } = req.query;
+
+  // ROUTE 1: MODERN AGORA RTC TOKEN GENERATOR
+  if (endpoint === "agoraToken") {
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+    
+    const { channelName, uid, role: userRole } = req.query;
+    const parsedUid = parseInt(uid) || 0;
+
+    if (!channelName) {
+      return res.status(400).json({ error: "channelName is required" });
+    }
+
+    // Set roles based on new package requirements
+    const role = userRole === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    
+    // Modern tokens use an absolute token duration limit in seconds (e.g., 3600 seconds = 1 hour)
+    const tokenExpirationInSeconds = 3600;
+    const privilegeExpirationInSeconds = 3600;
+
+    try {
+      const token = RtcTokenBuilder.buildTokenWithUid(
+        appId,
+        appCertificate,
+        channelName,
+        parsedUid,
+        role,
+        tokenExpirationInSeconds,
+        privilegeExpirationInSeconds
+      );
+      return res.status(200).json({ token });
+    } catch (error) {
+      return res.status(500).json({ error: `Agora Core Error: ${error.message}` });
+    }
+  }
+
+  // ROUTE 2: PAYSTACK 70/30 SPLIT INITIALIZER
+  if (req.method === "POST" && endpoint === "paystack") {
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    const { email, amount, streamerName, momoNumber, provider } = req.body;
+
+    try {
+      const subaccountResponse = await axios.post(
+        "https://api.paystack.co/subaccount",
+        {
+          business_name: streamerName,
+          settlement_bank: provider,
+          account_number: momoNumber,
+          percentage_charge: 30 
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${paystackSecretKey}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      const generatedSubaccountCode = subaccountResponse.data.data.subaccount_code;
+
+      const paymentResponse = await axios.post(
+        "https://api.paystack.co/transaction/initialize",
+        {
+          email: email,
+          amount: amount * 100, 
+          currency: "GHS",
+          subaccount: generatedSubaccountCode
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${paystackSecretKey}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      return res.status(200).json(paymentResponse.data);
+    } catch (error) {
+      const errorData = error.response ? error.response.data : error.message;
+      return res.status(500).json({ error: errorData });
+    }
+  }
+
+  return res.status(404).json({ error: "Endpoint not found" });
+};
