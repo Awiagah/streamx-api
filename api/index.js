@@ -13,9 +13,9 @@ module.exports = async (req, res) => {
   const { endpoint } = req.query;
 
   // ROUTE 1: AGORA RTC TOKEN GENERATOR
-  if (endpoint === "agoraToken") {
-    const appId = process.env.AGORA_APP_ID;
-    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+  if (endpoint === "007eJxTYLBYs+fc4n/Z2wvuH7/CZTG5XHda/NS0Ta0pr8I/dycFc1UqMJibWCQapllaGpuYJJuYpqZYJCWZmKakmRuYJFkkWaYZ/dzhntUQyMiwdF4iIyMDBIL47AzFJUWpibkRDAwAVIAixQ==") {
+    const appId = process.env.748a1f99344c45ed8bb45df704b8b9f2;
+    const appCertificate = process.env.79c41d1c122b406cbdec8cbadb5a84d1;
     const { channelName, uid, role: userRole } = req.query;
     const parsedUid = parseInt(uid) || 0;
 
@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
 
   // ROUTE 2: DYNAMIC MOMO SUBACCOUNT CREATION + PAYSTACK TRANSACTION SPLIT
   if (req.method === "POST" && endpoint === "paystack") {
-    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    const paystackSecretKey = process.env.sk_test_5ec2a2afdf1df87cd868af388d5c975415635b9f;
     const { email, amount, streamerName, momoNumber, provider } = req.body;
 
     try {
